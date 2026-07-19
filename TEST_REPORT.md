@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-19
 **Result:** PASS
-**Automated tests:** 22 passed, 0 failed
-**Automated test duration:** 16.960 seconds (final regression)
+**Automated tests:** 24 passed, 0 failed
+**Automated test duration:** 19.056 seconds (roadmap/benchmark regression)
 
 ## Environment
 
@@ -39,6 +39,8 @@
 | Path traversal | SDK rejected `../` escape | PASS |
 | Resource parsing | Memory/open-file policy parsed deterministically | PASS |
 | Automatic cleanup | Test Kernels stopped and records removed | PASS |
+| Token benchmark | Reproducible one-shot and 10/100/1,000-row break-even assertions | PASS |
+| Roadmap quality | Unique task IDs and Python/JavaScript/TypeScript coverage | PASS |
 
 Process creation-time, command, connection path, and random-token verification also ran on every integration execution and cleanup; all live Kernel checks passed.
 

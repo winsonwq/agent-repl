@@ -102,6 +102,12 @@ Python remains arbitrary code. Filesystem mounts, network denial, container reso
 
 See [TEST_REPORT.md](TEST_REPORT.md) for the local functional, security, installation, and Excel verification results.
 
+Planning and architecture evaluation:
+
+- [ROADMAP.md](ROADMAP.md) — prioritized Python/JavaScript/TypeScript and future-runtime TODOs.
+- [CLI_COMPARISON.md](CLI_COMPARISON.md) — unified vs. scattered CLI evaluation with reproducible token data.
+- [benchmarks/results/token-cost.md](benchmarks/results/token-cost.md) — generated benchmark table.
+
 ## Repository layout
 
 ```text
@@ -112,4 +118,5 @@ skills/agent-repl/      natural-language Agent Skill, runner and eval cases
 scripts/install.*       one-command idempotent installer
 deploy/                 sandbox image and host-enforcement example
 tests/                  unit, security and end-to-end tests
+benchmarks/             reproducible Agent context/token estimates
 ```
