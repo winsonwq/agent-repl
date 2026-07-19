@@ -1,8 +1,8 @@
-# Agent REPL 0.2
+# Agent REPL 0.2.1
 
 Agent REPL gives a shell-capable Agent a persistent Python runtime. Short-lived CLI calls reconnect to one long-lived Jupyter Kernel, preserving variables, imports, DataFrames, and Excel workbook objects across steps.
 
-The user-facing interface is the Agent Skill: users describe the task and do not configure a workspace, profile, or session.
+The user-facing interface is the Agent Skill: users describe the task and do not configure a workspace, runtime, or session. The current release has one production runtime—Python—and loads pandas, Excel helpers, and other libraries only when the task needs them.
 
 ## Install Runtime and Skill
 
@@ -38,7 +38,7 @@ Then ask naturally:
 检查公式错误并给我一个新文件。
 ```
 
-The Skill chooses `excel`, `data`, or `py`; uses the current directory as the workspace; selects a task-scoped session; preserves the source; and publishes results under `outputs/`.
+The Skill uses the current directory as the workspace, reconnects to the task-scoped Python session, imports the required libraries, preserves the source, and publishes results under `outputs/`.
 
 Excel files may be in the project root or under `inputs/`. No environment variables or directory setup are required.
 
@@ -48,22 +48,27 @@ These commands are primarily for the Skill and diagnostics:
 
 ```bash
 agent-repl doctor --json
-agent-repl py 'x = 41' --json
-agent-repl py 'x + 1' --json
+agent-repl 'x = 41' --json
+agent-repl 'x + 1' --json
+agent-repl --session experiment-a --stdin < analyze.py
 agent-repl sessions --json
-agent-repl status py --json
-agent-repl stop py --json
+agent-repl status --json
+agent-repl stop --json
 agent-repl gc --stale-minutes 240 --json
 agent-repl clean --json
 ```
 
-An explicit `@session` remains available when one task needs isolated states, but normal Agent use omits it. `AGENT_TASK_ID`, Claude/Codex session variables, or the detected local Agent process provide the session identity automatically.
+An explicit `--session` remains available when one task needs isolated states, but normal Agent use omits it. `AGENT_TASK_ID`, Claude/Codex session variables, or the detected local Agent process provide the task identity automatically.
+
+The v0.2 forms `py`, `data`, `excel`, and `alias@session` remain accepted as compatibility aliases. They no longer select separate Kernels: all aliases route to the same Python session, while `data` and `excel` only inject their former convenience imports. New integrations should use the target-free form and import libraries explicitly.
 
 ## Excel API
 
 The Skill internally follows this pattern:
 
 ```python
+from agent_repl_excel import excel
+
 wb = excel.open("report.xlsx")
 wb.read_range("Sales!A1:D10")
 wb.set_value("Sales!B6", 1800)

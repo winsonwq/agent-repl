@@ -93,8 +93,7 @@ class SecurityTests(unittest.TestCase):
             record = SessionRecord(
                 session_id="default:py:tampered",
                 logical_session="tampered",
-                profile_alias="py",
-                profile_name="python-base",
+                runtime_name="python",
                 language="python",
                 pid=os.getpid(),
                 connection_file=str(connection),

@@ -17,8 +17,8 @@ class RuntimeSdkTests(unittest.TestCase):
             context = RuntimeContext(
                 {
                     "task_id": "test",
-                    "session_id": "test:py:default",
-                    "profile": "python-base",
+                    "session_id": "test:default",
+                    "runtime": "python",
                     "language": "python",
                     "network_enabled": False,
                     "paths": paths,
@@ -36,6 +36,8 @@ class RuntimeSdkTests(unittest.TestCase):
 
             self.assertEqual(Path(published["path"]).read_text(encoding="utf-8"), "hello")
             self.assertTrue(context.capabilities.has("python"))
+            self.assertEqual(context.runtime, "python")
+            self.assertEqual(context.profile, "python")
             events = [json.loads(line) for line in (root / "events.jsonl").read_text().splitlines()]
             self.assertIn("artifact_published", [event["type"] for event in events])
 

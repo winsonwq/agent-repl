@@ -1,9 +1,9 @@
-# Agent REPL 0.2 Test Report
+# Agent REPL 0.2.1 Test Report
 
 **Date:** 2026-07-19
 **Result:** PASS
-**Automated tests:** 24 passed, 0 failed
-**Automated test duration:** 19.056 seconds (roadmap/benchmark regression)
+**Automated tests:** 28 passed, 0 failed
+**Automated test duration:** 20.234 seconds
 
 ## Environment
 
@@ -18,7 +18,10 @@
 | Area | Verification | Result |
 |---|---|---|
 | Persistent Python | Separate CLI calls retained `x`; second call returned `42` | PASS |
+| Target-free default | `agent-repl 'code'` reused the task-scoped Python Kernel | PASS |
 | Persistent DataFrame | DataFrame created in one call and summed in the next | PASS (`2700`) |
+| On-demand libraries | pandas and Excel helpers imported in submitted Python instead of selecting a profile | PASS |
+| Legacy compatibility | `data@legacy-shared` and `excel@legacy-shared` shared one Kernel and returned `42` | PASS |
 | Automatic workspace | Excel source opened directly from project root without workspace configuration | PASS |
 | Excel source safety | Source copied to `working` before edits | PASS |
 | Excel write/formula | March revenue `1500`; `D6 = B6-C6` | PASS |
@@ -26,7 +29,7 @@
 | Excel Kernel reuse | Later CLI call reused live `wb` | PASS |
 | Formula validation | Independent scan found no Excel error cells | PASS |
 | Structured errors | User exception returned `CODE_EXECUTION_ERROR` and exit code 1 | PASS |
-| Rich SDK | Semantic paths, artifacts, hashes, capabilities, and audit events | PASS |
+| Rich SDK | Semantic paths, artifacts, hashes, Runtime metadata, capabilities, and audit events | PASS |
 
 ## Security verification
 
@@ -39,7 +42,7 @@
 | Path traversal | SDK rejected `../` escape | PASS |
 | Resource parsing | Memory/open-file policy parsed deterministically | PASS |
 | Automatic cleanup | Test Kernels stopped and records removed | PASS |
-| Token benchmark | Reproducible one-shot and 10/100/1,000-row break-even assertions | PASS |
+| Token benchmark | Updated target-free commands and 10/100/1,000-row break-even assertions | PASS |
 | Roadmap quality | Unique task IDs and Python/JavaScript/TypeScript coverage | PASS |
 
 Process creation-time, command, connection path, and random-token verification also ran on every integration execution and cleanup; all live Kernel checks passed.
@@ -53,7 +56,7 @@ Runtime installed: PASS
 Claude project Skill installed: PASS
 Skill-bundled runner executable without PATH: PASS
 doctor ready: PASS
-Fresh Kernel execution: PASS (42)
+Fresh target-free Kernel execution: PASS (42)
 Cleanup: PASS (1 Kernel stopped)
 Installer rerun/idempotence: PASS
 Installer stdout single JSON object: PASS

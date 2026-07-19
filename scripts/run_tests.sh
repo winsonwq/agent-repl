@@ -19,7 +19,8 @@ export AGENT_REPL_STATE_DIR="$PROJECT_DIR/test-results/state"
 export AGENT_REPL_WORKDIR="$PROJECT_DIR/test-results/workspace"
 export AGENT_REPL_OUTPUT=json
 
-"$PYTHON_BIN" -m agent_repl.cli excel@finance --json <<'PY' | tee test-results/excel-e2e.json
+"$PYTHON_BIN" -m agent_repl.cli --session finance --stdin --json <<'PY' | tee test-results/excel-e2e.json
+from agent_repl_excel import excel
 wb = excel.open_input('sales_model.xlsx')
 wb.set_value('Sales!B6', 1500)
 wb.set_formula('Sales!D6', '=B6-C6')

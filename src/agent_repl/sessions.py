@@ -18,7 +18,7 @@ from jupyter_client.connect import write_connection_file
 from .executor import ExecutionTimeout, connect_client, execute_code
 from .locking import file_lock
 from .models import SessionRecord
-from .profiles import Profile
+from .runtime import PythonRuntime
 from .security import (
     ResourceLimits,
     process_matches,
@@ -106,7 +106,7 @@ class SessionStore:
         self,
         session_id: str,
         logical_session: str,
-        profile: Profile,
+        runtime: PythonRuntime,
         workdir: Path,
     ) -> tuple[SessionRecord, bool]:
         with file_lock(self.lock_path(session_id)):
@@ -115,13 +115,13 @@ class SessionStore:
                 return existing, False
             if existing:
                 self.record_path(session_id).unlink(missing_ok=True)
-            return self._start(session_id, logical_session, profile, workdir), True
+            return self._start(session_id, logical_session, runtime, workdir), True
 
     def _start(
         self,
         session_id: str,
         logical_session: str,
-        profile: Profile,
+        runtime: PythonRuntime,
         workdir: Path,
     ) -> SessionRecord:
         encoded_id = safe_id(session_id)
@@ -133,8 +133,8 @@ class SessionStore:
         context = {
             "task_id": os.environ.get("AGENT_TASK_ID", "default"),
             "session_id": session_id,
-            "profile": profile.name,
-            "language": profile.language,
+            "runtime": runtime.name,
+            "language": runtime.language,
             "network_enabled": os.environ.get("AGENT_REPL_NETWORK_ENABLED") == "1",
             "security_boundary": (
                 "host-sandbox-enforced"
@@ -148,7 +148,7 @@ class SessionStore:
                 "artifacts": str(workspace / "artifacts"),
                 "temp": str(workspace / "temp"),
             },
-            "capabilities": list(profile.capabilities),
+            "capabilities": list(runtime.capabilities),
             "events_file": str(events_file),
         }
         for path in context["paths"].values():
@@ -183,9 +183,8 @@ class SessionStore:
         record = SessionRecord(
             session_id=session_id,
             logical_session=logical_session,
-            profile_alias=profile.alias,
-            profile_name=profile.name,
-            language=profile.language,
+            runtime_name=runtime.name,
+            language=runtime.language,
             pid=process.pid,
             connection_file=str(connection_file),
             context_file=str(context_file),
@@ -198,9 +197,9 @@ class SessionStore:
         try:
             client = connect_client(str(connection_file), ready_timeout=15)
             client.stop_channels()
-            result = execute_code(str(connection_file), profile.bootstrap, artifact_dir, timeout=30)
+            result = execute_code(str(connection_file), runtime.bootstrap, artifact_dir, timeout=30)
             if not result["ok"]:
-                raise RuntimeError(f"Profile bootstrap failed: {result['events']}")
+                raise RuntimeError(f"Runtime bootstrap failed: {result['events']}")
         except Exception:
             self._terminate_known_child(process.pid)
             connection_file.unlink(missing_ok=True)

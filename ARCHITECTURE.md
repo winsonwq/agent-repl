@@ -1,4 +1,4 @@
-# Agent REPL 0.2 Architecture
+# Agent REPL 0.2.1 Architecture
 
 ## Interaction model
 
@@ -7,7 +7,7 @@ User: "处理 report.xlsx，修正公式并输出新文件"
   |
   v
 Agent Skill
-  |-- chooses excel/data/py
+  |-- writes Python and imports task libraries on demand
   |-- current directory = workspace
   |-- host identity = session identity
   |-- invokes bundled Runtime runner
@@ -25,7 +25,7 @@ Long-lived ipykernel
 source -> working copy -> outputs/artifacts
 ```
 
-The user never needs to know the Runtime profile, Kernel name, session name, state path, or workspace environment variable.
+The user never needs to know the Kernel name, session name, state path, or workspace environment variable.
 
 ## Identity and routing
 
@@ -34,10 +34,12 @@ The state root is outside the project and is namespaced by the resolved workspac
 The routing key remains conceptually:
 
 ```text
-workspace namespace + task identity + runtime profile + optional logical session
+workspace namespace + task identity + optional logical session
 ```
 
-Consequently, `agent-repl excel` is normally enough. Explicit `excel@scenario-b` is reserved for genuine parallel state inside one Agent task.
+Consequently, piping code to `agent-repl --stdin` is normally enough. Explicit `--session scenario-b` is reserved for genuine parallel state inside one Agent task.
+
+`py`, `data`, and `excel` from v0.2 are compatibility aliases, not profiles or security boundaries. They all resolve to the same Python session. The latter two may prepend convenience imports for old callers; new code imports pandas or `agent_repl_excel` when needed. A future profile is justified only when it changes the runtime, dependency image, permissions, or resource policy.
 
 ## Runtime security controls
 

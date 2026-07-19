@@ -15,7 +15,9 @@ class SkillTests(unittest.TestCase):
         content = SKILL.read_text(encoding="utf-8")
         self.assertIn("Treat the user's request as the interface", content)
         self.assertIn("Do not ask the user to configure a workspace", content)
-        self.assertIn("Omit `@session`", content)
+        self.assertIn("Omit `--session`", content)
+        self.assertIn("Import pandas", content)
+        self.assertNotIn("Choose the target automatically", content)
         self.assertNotIn("AGENT_REPL_WORKDIR", content)
 
     def test_skill_has_path_independent_runner(self):

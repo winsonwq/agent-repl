@@ -8,59 +8,59 @@
   "comparisons": [
     {
       "name": "Always-visible discovery metadata",
-      "unified_tokens": 126,
+      "unified_tokens": 125,
       "fragmented_tokens": 138,
-      "fragmented_minus_unified": 12,
-      "unified_reduction_pct": 8.7
+      "fragmented_minus_unified": 13,
+      "unified_reduction_pct": 9.4
     },
     {
-      "name": "All capability guidance loaded",
-      "unified_tokens": 677,
+      "name": "Main Skill guidance loaded",
+      "unified_tokens": 526,
       "fragmented_tokens": 461,
-      "fragmented_minus_unified": -216,
-      "unified_reduction_pct": -46.9
+      "fragmented_minus_unified": -65,
+      "unified_reduction_pct": -14.1
     },
     {
       "name": "Four-step Excel commands only",
-      "unified_tokens": 112,
+      "unified_tokens": 124,
       "fragmented_tokens": 148,
-      "fragmented_minus_unified": 36,
-      "unified_reduction_pct": 24.3
+      "fragmented_minus_unified": 24,
+      "unified_reduction_pct": 16.2
     },
     {
       "name": "Four-step Excel workflow (guidance + commands)",
-      "unified_tokens": 789,
+      "unified_tokens": 650,
       "fragmented_tokens": 344,
-      "fragmented_minus_unified": -445,
-      "unified_reduction_pct": -129.4
+      "fragmented_minus_unified": -306,
+      "unified_reduction_pct": -89.0
     },
     {
       "name": "Excel-to-DataFrame workflow with artifact handoff",
-      "unified_tokens": 786,
+      "unified_tokens": 650,
       "fragmented_tokens": 367,
-      "fragmented_minus_unified": -419,
-      "unified_reduction_pct": -114.2
+      "fragmented_minus_unified": -283,
+      "unified_reduction_pct": -77.1
     },
     {
       "name": "Mixed workflow with 10-row JSON handoff",
-      "unified_tokens": 786,
+      "unified_tokens": 650,
       "fragmented_tokens": 745,
-      "fragmented_minus_unified": -41,
-      "unified_reduction_pct": -5.5
+      "fragmented_minus_unified": 95,
+      "unified_reduction_pct": 12.8
     },
     {
       "name": "Mixed workflow with 100-row JSON handoff",
-      "unified_tokens": 786,
+      "unified_tokens": 650,
       "fragmented_tokens": 4318,
-      "fragmented_minus_unified": 3532,
-      "unified_reduction_pct": 81.8
+      "fragmented_minus_unified": 3668,
+      "unified_reduction_pct": 84.9
     },
     {
       "name": "Mixed workflow with 1,000-row JSON handoff",
-      "unified_tokens": 786,
+      "unified_tokens": 650,
       "fragmented_tokens": 40318,
-      "fragmented_minus_unified": 39532,
-      "unified_reduction_pct": 98.1
+      "fragmented_minus_unified": 39668,
+      "unified_reduction_pct": 98.4
     }
   ],
   "handoff": [
@@ -87,11 +87,11 @@
     }
   ],
   "raw": {
-    "unified_skill_tokens": 677,
+    "unified_skill_tokens": 526,
     "fragmented_all_guidance_tokens": 461,
-    "unified_excel_command_tokens": 112,
+    "unified_excel_command_tokens": 124,
     "fragmented_excel_command_tokens": 148,
-    "unified_mixed_command_tokens": 109,
+    "unified_mixed_command_tokens": 124,
     "fragmented_mixed_command_tokens": 92
   }
 }

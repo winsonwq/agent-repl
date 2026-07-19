@@ -145,7 +145,7 @@ class RuntimeContext:
         value = {
             "task_id": os.environ.get("AGENT_TASK_ID", "default"),
             "session_id": "standalone",
-            "profile": "standalone",
+            "runtime": "python",
             "language": "python",
             "network_enabled": True,
             "paths": {
@@ -162,13 +162,21 @@ class RuntimeContext:
         return str(self._value["session_id"])
 
     @property
+    def runtime(self) -> str:
+        return str(self._value.get("runtime", self._value.get("profile", "python")))
+
+    @property
     def profile(self) -> str:
-        return str(self._value["profile"])
+        """Backward-compatible alias for runtime."""
+        return self.runtime
 
     def describe(self) -> dict[str, Any]:
         return {
-            key: self._value[key]
-            for key in ("task_id", "session_id", "profile", "language", "network_enabled")
+            "task_id": self._value["task_id"],
+            "session_id": self._value["session_id"],
+            "runtime": self.runtime,
+            "language": self._value["language"],
+            "network_enabled": self._value["network_enabled"],
         } | {
             "security_boundary": self._value.get("security_boundary", "unknown"),
             "paths": {key: str(value) for key, value in self.paths.items()},

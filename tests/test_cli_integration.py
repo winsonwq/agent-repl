@@ -59,16 +59,20 @@ class CliIntegrationTests(unittest.TestCase):
         return completed, payload
 
     def test_01_python_state_persists_across_cli_calls(self):
-        _, first = self.run_cli("py@state", "x = 41")
-        _, second = self.run_cli("py@state", "x + 1")
+        _, first = self.run_cli("--session", "state", "x = 41")
+        _, second = self.run_cli("--session", "state", "x + 1")
         self.assertTrue(first["data"]["created"])
         self.assertTrue(second["data"]["state_preserved"])
         result_events = [event for event in second["data"]["events"] if event["type"] == "result"]
         self.assertEqual(result_events[-1]["text"], "42")
 
     def test_02_dataframe_state_persists(self):
-        self.run_cli("data@analysis", "df = pd.DataFrame({'region':['East','West'], 'revenue':[1200,1500]})")
-        _, payload = self.run_cli("data@analysis", "int(df['revenue'].sum())")
+        self.run_cli(
+            "--session",
+            "analysis",
+            "import pandas as pd; df = pd.DataFrame({'region':['East','West'], 'revenue':[1200,1500]})",
+        )
+        _, payload = self.run_cli("--session", "analysis", "int(df['revenue'].sum())")
         results = [event for event in payload["data"]["events"] if event["type"] == "result"]
         self.assertEqual(results[-1]["text"], "2700")
 
@@ -83,7 +87,7 @@ errors = wb.scan_formula_errors()
 published = wb.save_output('sales_model_updated.xlsx', title='Updated sales model')
 {'before': before, 'after': wb.read_cell('Sales!B6'), 'cached_profit': wb.cached_value('Sales!D6'), 'calc': calc, 'errors': errors, 'published': published}
 """
-        _, payload = self.run_cli("excel@finance", code)
+        _, payload = self.run_cli("--session", "finance", "from agent_repl_excel import excel\n" + code)
         result_events = [event for event in payload["data"]["events"] if event["type"] == "result"]
         self.assertTrue(result_events)
 
@@ -96,12 +100,12 @@ published = wb.save_output('sales_model_updated.xlsx', title='Updated sales mode
         self.assertEqual(calculated["Sales"]["D6"].value, 720)
 
         # A second CLI process reuses the in-memory wb object.
-        _, reuse = self.run_cli("excel@finance", "wb.read_cell('Sales!B6')")
+        _, reuse = self.run_cli("--session", "finance", "wb.read_cell('Sales!B6')")
         reuse_results = [event for event in reuse["data"]["events"] if event["type"] == "result"]
         self.assertEqual(reuse_results[-1]["text"], "1500")
 
     def test_04_error_is_structured(self):
-        completed, payload = self.run_cli("py@errors", "raise ValueError('expected failure')", check=False)
+        completed, payload = self.run_cli("--session", "errors", "raise ValueError('expected failure')", check=False)
         self.assertEqual(completed.returncode, 1)
         self.assertEqual(payload["status"], "error")
         self.assertEqual(payload["error"]["code"], "CODE_EXECUTION_ERROR")
@@ -110,13 +114,14 @@ published = wb.save_output('sales_model_updated.xlsx', title='Updated sales mode
         self.assertEqual(errors[-1]["name"], "ValueError")
 
     def test_05_kernel_environment_is_sanitized(self):
-        _, payload = self.run_cli("py@environment", "import os; 'AGENT_REPL_TEST_SECRET' in os.environ")
+        _, payload = self.run_cli("--session", "environment", "import os; 'AGENT_REPL_TEST_SECRET' in os.environ")
         results = [event for event in payload["data"]["events"] if event["type"] == "result"]
         self.assertEqual(results[-1]["text"], "False")
 
     def test_06_timeout_interrupts_and_preserves_responsive_kernel(self):
         completed, payload = self.run_cli(
-            "py@timeout",
+            "--session",
+            "timeout",
             "import time; time.sleep(10)",
             "--timeout",
             "0.3",
@@ -125,13 +130,13 @@ published = wb.save_output('sales_model_updated.xlsx', title='Updated sales mode
         self.assertEqual(completed.returncode, 4)
         self.assertEqual(payload["error"]["code"], "EXECUTION_TIMEOUT")
         self.assertTrue(payload["data"]["session_recovered"])
-        _, reuse = self.run_cli("py@timeout", "21 * 2")
+        _, reuse = self.run_cli("--session", "timeout", "21 * 2")
         results = [event for event in reuse["data"]["events"] if event["type"] == "result"]
         self.assertEqual(results[-1]["text"], "42")
 
     def test_07_excel_can_open_source_from_workspace_root(self):
-        code = "wb_root = excel.open('report-at-root.xlsx'); wb_root.read_cell('Sales!B4')"
-        _, payload = self.run_cli("excel@root-file", code)
+        code = "from agent_repl_excel import excel; wb_root = excel.open('report-at-root.xlsx'); wb_root.read_cell('Sales!B4')"
+        _, payload = self.run_cli("--session", "root-file", code)
         results = [event for event in payload["data"]["events"] if event["type"] == "result"]
         self.assertEqual(results[-1]["text"], "1000")
         self.assertTrue((self.workspace / "working" / "report-at-root.xlsx").is_file())
@@ -142,6 +147,21 @@ published = wb.save_output('sales_model_updated.xlsx', title='Updated sales mode
         record = payload["data"][0]
         self.assertEqual(stat.S_IMODE(Path(record["connection_file"]).stat().st_mode), 0o600)
         self.assertEqual(stat.S_IMODE(Path(record["context_file"]).stat().st_mode), 0o600)
+
+    def test_09_default_entry_uses_task_scoped_python_kernel(self):
+        _, first = self.run_cli("default_value = 20")
+        _, second = self.run_cli("default_value + 22")
+        self.assertTrue(first["data"]["created"])
+        self.assertTrue(second["data"]["state_preserved"])
+        results = [event for event in second["data"]["events"] if event["type"] == "result"]
+        self.assertEqual(results[-1]["text"], "42")
+
+    def test_10_legacy_aliases_share_one_kernel(self):
+        self.run_cli("data@legacy-shared", "df_legacy = pd.DataFrame({'value': [40, 2]})")
+        _, payload = self.run_cli("excel@legacy-shared", "int(df_legacy['value'].sum())")
+        results = [event for event in payload["data"]["events"] if event["type"] == "result"]
+        self.assertEqual(results[-1]["text"], "42")
+        self.assertEqual(payload["data"]["runtime"], "python")
 
 
 if __name__ == "__main__":

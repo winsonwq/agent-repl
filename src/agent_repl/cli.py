@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .executor import ExecutionTimeout
-from .profiles import parse_target
+from .runtime import RUNTIME, legacy_prelude, parse_legacy_target
 from .security import ResourceLimits, default_runtime_root, detected_agent_task_id
 from .sessions import SessionStore, safe_id
 
@@ -61,7 +61,8 @@ def state_dir_from(args: argparse.Namespace, workdir: Path | None = None) -> Pat
     explicit = getattr(args, "state_dir", None)
     if explicit:
         return Path(explicit).expanduser()
-    workspace = (workdir or Path(os.environ.get("AGENT_REPL_WORKDIR", "."))).resolve()
+    configured_workdir = getattr(args, "workdir", None) or os.environ.get("AGENT_REPL_WORKDIR", ".")
+    workspace = (workdir or Path(configured_workdir)).resolve()
     namespace = hashlib.sha256(str(workspace).encode("utf-8")).hexdigest()[:20]
     configured_root = os.environ.get("AGENT_REPL_STATE_DIR")
     root = Path(configured_root).expanduser().resolve() if configured_root else default_runtime_root()
@@ -80,14 +81,16 @@ def build_execute_parser() -> argparse.ArgumentParser:
         description="Execute code in a persistent, named Jupyter kernel session.",
         epilog=(
             "Examples:\n"
-            "  agent-repl py@demo 'x = 41'\n"
-            "  agent-repl py@demo 'x + 1'\n"
-            "  agent-repl excel@finance < analyze.py"
+            "  agent-repl 'x = 41'\n"
+            "  agent-repl 'x + 1'\n"
+            "  agent-repl --session experiment-a --stdin < analyze.py"
+            "\nLegacy py, data, and excel targets remain accepted as aliases."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("target", help="Runtime alias with optional session: py, data, excel, py@demo")
-    parser.add_argument("code", nargs="?", help="Code to execute; reads stdin when omitted")
+    parser.add_argument("inputs", nargs="*", metavar="CODE", help="Python code; reads stdin when omitted")
+    parser.add_argument("--session", help="Optional isolated logical session")
+    parser.add_argument("--stdin", action="store_true", help="Read Python code from standard input")
     parser.add_argument("--file", help="Read code from a UTF-8 file")
     parser.add_argument("--workdir", default=os.environ.get("AGENT_REPL_WORKDIR", "."))
     parser.add_argument("--state-dir")
@@ -99,16 +102,18 @@ def build_execute_parser() -> argparse.ArgumentParser:
 def build_management_parser(command: str) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog=f"agent-repl {command}")
     if command in {"status", "stop", "restart"}:
-        parser.add_argument("target", help="Runtime target such as py@demo")
+        parser.add_argument("target", nargs="?", help="Legacy target such as py@demo")
+        parser.add_argument("--session", help="Optional isolated logical session")
     parser.add_argument("--state-dir")
+    parser.add_argument("--workdir", default=os.environ.get("AGENT_REPL_WORKDIR", "."))
     parser.add_argument("--json", action="store_true")
     if command == "gc":
         parser.add_argument("--stale-minutes", type=int, default=240)
     return parser
 
 
-def session_identity(target: str) -> tuple[Any, str, str]:
-    default_session = next(
+def task_identity() -> str:
+    return next(
         (
             os.environ[name]
             for name in ("AGENT_TASK_ID", "CLAUDE_SESSION_ID", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID")
@@ -116,10 +121,32 @@ def session_identity(target: str) -> tuple[Any, str, str]:
         ),
         detected_agent_task_id() or "default",
     )
-    profile, logical_session = parse_target(target, default_session)
-    task_id = safe_id(default_session)
-    session_id = f"{task_id}:{profile.alias}:{safe_id(logical_session)}"
-    return profile, logical_session, session_id
+
+
+def session_identity(explicit_session: str | None) -> tuple[str, str]:
+    task_id = safe_id(task_identity())
+    logical_session = safe_id(explicit_session or "default")
+    return logical_session, f"{task_id}:{logical_session}"
+
+
+def execution_input(args: argparse.Namespace) -> tuple[str | None, str | None]:
+    values = list(args.inputs)
+    legacy_alias: str | None = None
+    legacy_session: str | None = None
+    if values:
+        legacy = parse_legacy_target(values[0])
+        if legacy:
+            legacy_alias, legacy_session = legacy
+            values.pop(0)
+    if len(values) > 1:
+        raise ValueError("Provide Python code as one argument or pipe it through stdin")
+    if args.session and legacy_session:
+        raise ValueError("Use either --session or an @session legacy alias, not both")
+    if args.stdin and values:
+        raise ValueError("Use either a code argument or --stdin, not both")
+    if args.stdin and args.file:
+        raise ValueError("Use either --file or --stdin, not both")
+    return legacy_alias, args.session or legacy_session
 
 
 def handle_execute(argv: list[str]) -> int:
@@ -127,19 +154,23 @@ def handle_execute(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     json_output = default_json(args)
     try:
-        profile, logical_session, session_id = session_identity(args.target)
-        if args.file and args.code:
+        legacy_alias, explicit_session = execution_input(args)
+        logical_session, session_id = session_identity(explicit_session)
+        if args.file and args.inputs[1 if legacy_alias else 0 :]:
             raise ValueError("Use either a code argument or --file, not both")
         if args.file:
             code = Path(args.file).read_text(encoding="utf-8")
-        elif args.code is not None:
-            code = args.code
+        elif args.inputs[1 if legacy_alias else 0 :]:
+            code = args.inputs[-1]
         elif not sys.stdin.isatty():
             code = sys.stdin.read()
         else:
             raise ValueError("Provide code, --file, or pipe code through stdin")
         if not code.strip():
             raise ValueError("Code cannot be empty")
+        prelude = legacy_prelude(legacy_alias)
+        if prelude:
+            code = f"{prelude}\n{code}"
         workdir = Path(args.workdir)
         store = SessionStore(state_dir_from(args, workdir))
         auto_gc_minutes = int(os.environ.get("AGENT_REPL_AUTO_GC_MINUTES", "1440"))
@@ -148,14 +179,14 @@ def handle_execute(argv: list[str]) -> int:
         record, created = store.ensure(
             session_id,
             logical_session,
-            profile,
+            RUNTIME,
             workdir,
         )
         result = store.execute(record, code, args.timeout)
         result.update(
             {
                 "session": session_id,
-                "profile": profile.name,
+                "runtime": RUNTIME.name,
                 "created": created,
                 "state_preserved": not created,
             }
@@ -199,17 +230,18 @@ def handle_management(command: str, argv: list[str]) -> int:
     try:
         if command == "doctor":
             state_dir = store.state_dir
+            workspace = Path(args.workdir).resolve()
             data = {
                 "executable": shutil.which("agent-repl") or sys.argv[0],
                 "python": sys.executable,
-                "workspace": str(Path.cwd().resolve()),
+                "workspace": str(workspace),
                 "state_dir": str(state_dir),
-                "state_outside_workspace": Path.cwd().resolve() not in state_dir.parents and state_dir != Path.cwd().resolve(),
+                "state_outside_workspace": workspace not in state_dir.parents and state_dir != workspace,
                 "skill_locations": [
                     str(path)
                     for path in (
                         Path.home() / ".claude" / "skills" / "agent-repl" / "SKILL.md",
-                        Path.cwd() / ".claude" / "skills" / "agent-repl" / "SKILL.md",
+                        workspace / ".claude" / "skills" / "agent-repl" / "SKILL.md",
                     )
                     if path.is_file()
                 ],
@@ -240,14 +272,22 @@ def handle_management(command: str, argv: list[str]) -> int:
         elif command == "gc":
             data = {"removed": store.gc(args.stale_minutes), "stale_minutes": args.stale_minutes}
         else:
-            profile, logical_session, session_id = session_identity(args.target)
+            legacy_session = None
+            if args.target:
+                legacy = parse_legacy_target(args.target)
+                if not legacy:
+                    raise ValueError(f"Unknown legacy target: {args.target}")
+                _, legacy_session = legacy
+            if args.session and legacy_session:
+                raise ValueError("Use either --session or an @session legacy alias, not both")
+            logical_session, session_id = session_identity(args.session or legacy_session)
             record = store.load(session_id)
             if command == "status":
                 data = {
                     "session": session_id,
                     "exists": record is not None,
                     "alive": bool(record and store.is_healthy(record)),
-                    "profile": profile.name,
+                    "runtime": RUNTIME.name,
                 }
             elif command == "stop":
                 data = {"session": session_id, "stopped": store.stop(session_id)}
@@ -256,8 +296,8 @@ def handle_management(command: str, argv: list[str]) -> int:
                 record, _ = store.ensure(
                     session_id,
                     logical_session,
-                    profile,
-                    Path(os.environ.get("AGENT_REPL_WORKDIR", ".")),
+                    RUNTIME,
+                    Path(args.workdir),
                 )
                 data = {"session": session_id, "pid": record.pid, "restarted": True}
             else:
@@ -272,8 +312,10 @@ def handle_management(command: str, argv: list[str]) -> int:
 def main(argv: list[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
     if not arguments:
-        build_execute_parser().print_help()
-        return 0
+        if sys.stdin.isatty():
+            build_execute_parser().print_help()
+            return 0
+        return handle_execute([])
     if arguments[0] in {"status", "stop", "restart", "sessions", "clean", "gc", "doctor"}:
         return handle_management(arguments[0], arguments[1:])
     return handle_execute(arguments)

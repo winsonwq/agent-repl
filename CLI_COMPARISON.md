@@ -16,7 +16,7 @@ The recommended design is therefore hybrid: one user-facing CLI and Skill, with 
 
 | Unified control plane | Scattered CLI suite |
 |---|---|
-| `agent-repl py`, `js`, `ts`, `excel` | `python-repl`, `javascript-repl`, `typescript-repl`, `excel-cli`, `dataframe-cli`, `artifact-cli`, `session-cli` |
+| `agent-repl` for Python today; explicit runtime selection only when another engine ships | `python-repl`, `javascript-repl`, `typescript-repl`, `excel-cli`, `dataframe-cli`, `artifact-cli`, `session-cli` |
 | One Skill/router | Separate discovery metadata and help for each CLI |
 | One session key and state registry | Each CLI defines or delegates its own state |
 | One JSON event/error contract | Command-specific schemas unless separately standardized |
@@ -34,16 +34,16 @@ python benchmarks/token_cost.py
 
 | Metric | Unified tokens | Scattered tokens | Unified change | Interpretation |
 |---|---:|---:|---:|---|
-| Always-visible discovery metadata | 126 | 138 | −8.7% | Small catalog advantage; only 12 tokens per context load |
-| All capability guidance loaded | 677 | 461 | +46.9% | Current unified Skill is too broad and needs progressive disclosure |
-| Four-step Excel commands only | 112 | 148 | −24.3% | Shared object/session grammar removes repeated paths and flags |
-| Four-step Excel, guidance + commands | 789 | 344 | +129.4% | Narrow Excel docs win for a small one-domain task |
-| Excel→DataFrame with artifact paths | 786 | 367 | +114.2% | A disciplined artifact protocol prevents data-token costs |
-| Mixed workflow, 10-row JSON handoff | 786 | 745 | +5.5% | Near break-even; unified Skill overhead is still visible |
-| Mixed workflow, 100-row JSON handoff | 786 | 4,318 | −81.8% | Persistent state avoids 3,965 JSON tokens |
-| Mixed workflow, 1,000-row JSON handoff | 786 | 40,318 | −98.1% | Model-mediated data transfer dominates everything else |
+| Always-visible discovery metadata | 125 | 138 | −9.4% | Small catalog advantage; only 13 tokens per context load |
+| Main Skill guidance loaded | 526 | 461 | +14.1% | Progressive disclosure narrowed the prior 677-token Skill; specialized docs remain smaller |
+| Four-step Excel commands only | 124 | 148 | −16.2% | Explicit one-time import costs tokens but shared state still removes repeated paths and flags |
+| Four-step Excel, guidance + commands | 650 | 344 | +89.0% | Narrow Excel docs win for a small one-domain task |
+| Excel→DataFrame with artifact paths | 650 | 367 | +77.1% | A disciplined artifact protocol prevents data-token costs |
+| Mixed workflow, 10-row JSON handoff | 650 | 745 | −12.8% | The smaller Skill moves this fixture just past break-even |
+| Mixed workflow, 100-row JSON handoff | 650 | 4,318 | −84.9% | Persistent state avoids 3,965 JSON tokens |
+| Mixed workflow, 1,000-row JSON handoff | 650 | 40,318 | −98.4% | Model-mediated data transfer dominates everything else |
 
-Negative cost is not automatic. The present main Skill is 677 tokens, while the seven deliberately minimal scattered help texts total 461. `ROADMAP.md` therefore makes splitting the main Skill to at most 300 tokens a P0 item.
+Negative cost is not automatic. Progressive disclosure reduced the main Skill from 677 to 526 tokens, while the seven deliberately minimal scattered help texts total 461. `ROADMAP.md` keeps a target of at most 300 tokens for the main routing instructions.
 
 ### Data handoff alone
 
@@ -53,7 +53,7 @@ Negative cost is not automatic. The present main Skill is 677 tokens, while the 
 | 100 × 8 | 3,965 | 23 | 3,965 |
 | 1,000 × 8 | 39,965 | 23 | 39,965 |
 
-The break-even in this fixture is roughly a dozen rows. This is not a universal row threshold: long strings, nested values, language, and model tokenizer change it. The architectural rule should be based on measured preview tokens/bytes, not row count alone.
+The 10-row JSON case is already slightly favorable after shrinking the Skill, while the artifact-path workflow still favors scattered CLIs. This is not a universal row threshold: long strings, nested values, language, and model tokenizer change it. The architectural rule should be based on measured preview tokens/bytes, not row count alone.
 
 ### Measurement limits
 
@@ -76,14 +76,14 @@ The following is a documented engineering judgment, not a benchmark. Scores are 
 | One-shot token efficiency | 10 | 2 | 5 | Narrow CLI loads less guidance |
 | Iterative token efficiency | 20 | 5 | 2 | Persistent in-process objects avoid repeated state/data |
 | Cross-domain handoff | 15 | 5 | 2 | DataFrame/workbook/artifact references stay in one session |
-| Agent discoverability | 10 | 4 | 3 | One grammar reduces selection; profile selection still matters |
+| Agent discoverability | 10 | 5 | 3 | Python needs no target selection; one grammar handles libraries on demand |
 | Output/error consistency | 10 | 5 | 2 | One event envelope and exit-code taxonomy |
 | Security policy consistency | 10 | 5 | 2 | One state, environment, identity, timeout, and quota layer |
 | Lifecycle/observability | 10 | 5 | 2 | Central status, interrupt, GC, logs, and audits |
 | Install/update operations | 5 | 4 | 2 | One installer/Skill; adapters may remain modular |
 | Domain-specific optimization | 5 | 3 | 5 | Dedicated CLIs can expose specialized operations directly |
 | Fault/release isolation | 5 | 3 | 5 | Independent CLIs fail and ship independently |
-| **Weighted total** | **100** | **87/100** | **54/100** | Unified wins for an Agent platform; scattered wins selective one-shot niches |
+| **Weighted total** | **100** | **89/100** | **54/100** | Unified wins for an Agent platform; scattered wins selective one-shot niches |
 
 ## Advantages beyond tokens
 
@@ -105,7 +105,7 @@ The following is a documented engineering judgment, not a benchmark. Scores are 
 | Risk | Consequence | Mitigation |
 |---|---|---|
 | Control-plane complexity | Adapter bugs can affect several runtimes | Contract tests and thin adapter boundary |
-| Larger installation | Bundling Python, Node, LibreOffice, and future runtimes grows images | Modular runtime extras and profiles |
+| Larger installation | Bundling Python, Node, LibreOffice, and future runtimes grows images | Modular runtime extras and runtime manifests |
 | Shared release cadence | A core change may delay one language | Versioned adapter API and independent adapter packages |
 | Central blast radius | Registry/lifecycle defect affects all sessions | Schema migration, fail-closed process identity, canary release |
 | Lowest-common-denominator API | Language-specific features may be hidden | Common envelope plus adapter-specific capabilities |
@@ -128,7 +128,8 @@ Examples include `git`, a deterministic file converter, formatter, compiler, or 
 Keep one public Agent contract:
 
 ```text
-Skill -> agent-repl <profile> -> Runtime Adapter
+Skill -> agent-repl -> Python Runtime Adapter
+                   -> optional explicit Runtime Adapter in future
 ```
 
 Allow adapters to call mature dedicated CLIs internally and exchange large data through files/Arrow/Parquet rather than the model. This preserves domain specialization without exposing a fragmented session, security, and error model to the Agent.

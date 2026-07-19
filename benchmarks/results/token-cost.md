@@ -8,14 +8,14 @@ Tokenizer: `tiktoken cl100k_base`
 
 | Metric | Unified | Fragmented | Difference | Unified reduction |
 |---|---:|---:|---:|---:|
-| Always-visible discovery metadata | 126 | 138 | +12 | 8.7% |
-| All capability guidance loaded | 677 | 461 | -216 | -46.9% |
-| Four-step Excel commands only | 112 | 148 | +36 | 24.3% |
-| Four-step Excel workflow (guidance + commands) | 789 | 344 | -445 | -129.4% |
-| Excel-to-DataFrame workflow with artifact handoff | 786 | 367 | -419 | -114.2% |
-| Mixed workflow with 10-row JSON handoff | 786 | 745 | -41 | -5.5% |
-| Mixed workflow with 100-row JSON handoff | 786 | 4,318 | +3,532 | 81.8% |
-| Mixed workflow with 1,000-row JSON handoff | 786 | 40,318 | +39,532 | 98.1% |
+| Always-visible discovery metadata | 125 | 138 | +13 | 9.4% |
+| Main Skill guidance loaded | 526 | 461 | -65 | -14.1% |
+| Four-step Excel commands only | 124 | 148 | +24 | 16.2% |
+| Four-step Excel workflow (guidance + commands) | 650 | 344 | -306 | -89.0% |
+| Excel-to-DataFrame workflow with artifact handoff | 650 | 367 | -283 | -77.1% |
+| Mixed workflow with 10-row JSON handoff | 650 | 745 | +95 | 12.8% |
+| Mixed workflow with 100-row JSON handoff | 650 | 4,318 | +3,668 | 84.9% |
+| Mixed workflow with 1,000-row JSON handoff | 650 | 40,318 | +39,668 | 98.4% |
 
 ## Model-mediated tabular handoff
 

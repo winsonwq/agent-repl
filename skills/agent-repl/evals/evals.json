@@ -4,13 +4,13 @@
     {
       "id": 1,
       "prompt": "帮我把当前目录的 report.xlsx 里三月份收入改成 1800，更新利润公式并给我新文件。",
-      "expected_output": "Automatically use the Excel profile and current workspace, preserve the source, validate formulas, and publish a new workbook.",
+      "expected_output": "Use the task's persistent Python session, import the Excel helper on demand, preserve the source, validate formulas, and publish a new workbook.",
       "files": ["report.xlsx"]
     },
     {
       "id": 2,
       "prompt": "分析 sales.csv，先找异常值，我确认后还要继续做分组汇总。",
-      "expected_output": "Use one persistent data session across the inspection and follow-up analysis without exposing session setup to the user.",
+      "expected_output": "Use one persistent Python session across the inspection and follow-up analysis, importing the data library on demand without exposing session setup to the user.",
       "files": ["sales.csv"]
     },
     {

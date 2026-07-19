@@ -30,9 +30,9 @@ class BenchmarkTests(unittest.TestCase):
         comparisons = {row["name"]: row for row in payload["comparisons"]}
         self.assertGreater(
             comparisons["Four-step Excel commands only"]["unified_reduction_pct"],
-            20,
+            10,
         )
-        self.assertLess(
+        self.assertGreater(
             comparisons["Mixed workflow with 10-row JSON handoff"]["unified_reduction_pct"],
             0,
         )

@@ -50,19 +50,20 @@ Manage process lifecycle with `session-cli <status|interrupt|restart|stop|gc> --
 }
 
 
-UNIFIED_EXCEL_COMMANDS = """agent-repl excel --json <<'PY'
+UNIFIED_EXCEL_COMMANDS = """agent-repl --stdin --json <<'PY'
+from agent_repl_excel import excel
 wb = excel.open('report.xlsx')
 wb.read_range('Sales!A1:D20')
 PY
-agent-repl excel --json <<'PY'
+agent-repl --stdin --json <<'PY'
 wb.set_value('Sales!B6', 1800)
 wb.set_formula('Sales!D6', '=B6-C6')
 PY
-agent-repl excel --json <<'PY'
+agent-repl --stdin --json <<'PY'
 wb.recalculate()
 wb.scan_formula_errors()
 PY
-agent-repl excel --json <<'PY'
+agent-repl --stdin --json <<'PY'
 wb.save_output('report-updated.xlsx')
 PY"""
 
@@ -75,14 +76,16 @@ excel-cli validate --input working/report-step3.xlsx --formula-errors --json
 artifact-cli publish --file working/report-step3.xlsx --output-dir outputs --name report-updated.xlsx --json"""
 
 
-UNIFIED_MIXED_COMMANDS = """agent-repl excel --json <<'PY'
+UNIFIED_MIXED_COMMANDS = """agent-repl --stdin --json <<'PY'
+import pandas as pd
+from agent_repl_excel import excel
 wb = excel.open('sales.xlsx')
 rows = wb.read_range('Sales!A1:H101')
 df = pd.DataFrame(rows[1:], columns=rows[0])
 summary = df.groupby('region', as_index=False).revenue.sum()
 summary
 PY
-agent-repl excel --json <<'PY'
+agent-repl --stdin --json <<'PY'
 summary.to_excel(ctx.paths['outputs'] / 'regional-summary.xlsx', index=False)
 ctx.outputs.publish_file(ctx.paths['outputs'] / 'regional-summary.xlsx')
 PY"""
@@ -190,7 +193,7 @@ def main() -> int:
 
     comparison_inputs = [
         ("Always-visible discovery metadata", count(unified_metadata), count(scattered_metadata)),
-        ("All capability guidance loaded", count(unified_skill), count(fragmented_all_guidance)),
+        ("Main Skill guidance loaded", count(unified_skill), count(fragmented_all_guidance)),
         ("Four-step Excel commands only", count(UNIFIED_EXCEL_COMMANDS), count(SCATTERED_EXCEL_COMMANDS)),
         (
             "Four-step Excel workflow (guidance + commands)",
