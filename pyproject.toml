@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-repl"
+version = "0.2.0"
+description = "Persistent, agent-friendly Python REPL sessions backed by Jupyter kernels"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Agent REPL Contributors" }]
+dependencies = [
+  "ipykernel>=6.29,<7",
+  "jupyter-client>=8.6,<9",
+  "psutil>=5.9,<8",
+]
+
+[project.optional-dependencies]
+data = ["numpy>=1.26,<3", "pandas>=2.2,<3", "pyarrow>=16,<20"]
+excel = ["openpyxl>=3.1,<4", "pandas>=2.2,<3"]
+all = [
+  "numpy>=1.26,<3",
+  "pandas>=2.2,<3",
+  "pyarrow>=16,<20",
+  "openpyxl>=3.1,<4",
+]
+
+[project.scripts]
+agent-repl = "agent_repl.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,13 @@
+.venv/
+.DS_Store
+.agent-repl/
+node_modules
+__pycache__/
+*.py[cod]
+*.egg-info/
+.coverage
+htmlcov/
+dist/
+build/
+tests/tmp/
+test-results/

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SKILL_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+PROJECT_RUNTIME="$SKILL_DIR/../../.venv/bin/agent-repl"
+USER_RUNTIME="$HOME/.local/share/agent-repl/venv/bin/agent-repl"
+
+if [[ -x "$PROJECT_RUNTIME" ]]; then
+  exec "$PROJECT_RUNTIME" "$@"
+fi
+if [[ -x "$USER_RUNTIME" ]]; then
+  exec "$USER_RUNTIME" "$@"
+fi
+echo '{"status":"error","error":{"code":"RUNTIME_NOT_INSTALLED","message":"Agent REPL runtime is not installed","recoverable":false}}' >&2
+exit 127
